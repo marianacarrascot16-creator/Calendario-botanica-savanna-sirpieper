@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Itinerario · Botánica, Savanna, Sir Pieper</title>
+<style>
+:root{--bg:#f4f4f1;--card:#fff;--tx:#1b1b1b;--mut:#6b6b6b;--bd:#dcdcd6;--ac:#14483a;--act:#fff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121212;--card:#1d1d1d;--tx:#eee;--mut:#9a9a9a;--bd:#333}}
+:root[data-theme="dark"]{--bg:#121212;--card:#1d1d1d;--tx:#eee;--mut:#9a9a9a;--bd:#333}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:28px;margin:8px 0 4px}
+.sub{color:var(--mut);margin:0 0 24px}
+.big{display:block;width:100%;border:0;border-radius:16px;padding:34px 20px;margin-bottom:14px;font-size:26px;letter-spacing:.12em;cursor:pointer;text-align:center}
+.b-botanica{background:#14483a;color:#fff;font-weight:300}
+.b-savanna{background:#1a0505;color:#ff4a4a;text-shadow:0 0 10px #f00;font-weight:700}
+.b-sirpieper{background:#111;color:#fff;font-family:Georgia,serif;font-weight:700;letter-spacing:.04em}
+.big small{display:block;font-size:13px;letter-spacing:0;opacity:.75;margin-top:6px;font-family:system-ui,sans-serif;text-shadow:none;font-weight:400}
+.top{display:flex;align-items:center;gap:12px;padding:18px 16px;border-radius:14px;background:var(--ac);color:var(--act);margin-bottom:16px}
+.top h2{margin:0;font-size:22px;flex:1}
+.top button{background:rgba(255,255,255,.18);color:inherit;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:14px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:14px;padding-bottom:4px}
+.tabs button{flex:none;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:20px;padding:8px 14px;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--ac);color:var(--act);border-color:var(--ac)}
+form{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:grid;gap:10px;margin-bottom:16px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{font-size:13px;color:var(--mut);display:grid;gap:4px}
+input,textarea{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px;width:100%}
+.add{background:var(--ac);color:var(--act);border:0;border-radius:8px;padding:11px;font-size:15px;cursor:pointer}
+.item{display:flex;gap:12px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+.date{flex:none;width:58px;text-align:center;background:var(--ac);color:var(--act);border-radius:10px;padding:6px 0;line-height:1.1}
+.date b{display:block;font-size:22px}.date span{font-size:12px;text-transform:uppercase}
+.info{flex:1;min-width:0}.info h3{margin:0 0 2px;font-size:16px}
+.meta{color:var(--mut);font-size:14px}.notes{font-size:14px;margin-top:4px;white-space:pre-wrap}
+.del{background:none;border:0;color:var(--mut);cursor:pointer;font-size:20px;align-self:flex-start}
+.empty{color:var(--mut);text-align:center;padding:24px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var VEN={
+botanica:{n:"BOTÁNICA",ac:"#14483a",c:"b-botanica"},
+savanna:{n:"SAVANNA",ac:"#b01212",c:"b-savanna"},
+sirpieper:{n:"Sir Pieper Brewing Co.",ac:"#222222",c:"b-sirpieper"}};
+var SEC={
+evento:{t:"Eventos",f:["date","time","place","notes"],lab:"Fecha del evento",pl:"Lugar del evento"},
+plan:{t:"Plan de marketing",f:["date","notes"],lab:"Fecha de la acción"},
+sesion:{t:"Sesiones de fotos",f:["date","time","place","notes"],lab:"Fecha de la sesión"},
+post:{t:"Publicaciones",f:["date","time","place","notes"],lab:"Fecha de publicación",pl:"Red social / lugar"},
+reunion:{t:"Reuniones",f:["date","time","place","notes"],lab:"Fecha de la reunión"}};
+var MES=["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+var SUPABASE_URL="PEGA_AQUI_TU_PROJECT_URL";
+var SUPABASE_KEY="PEGA_AQUI_TU_ANON_PUBLIC_KEY";
+var sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+var items=[],dbc=true,cur=null,tab="evento";
+function list(v,s){return items.filter(function(i){return i.v===v&&i.s===s})}
+function fail(){alert("No se pudo guardar. Revisa tu conexión y las políticas de Supabase.")}
+function load(){
+sb.from("items").select("*").then(function(r){
+if(r.error){alert("Error al leer la base de datos: "+r.error.message);return}
+items=r.data.map(function(x){return{id:x.id,v:x.venue,s:x.section,title:x.title,date:x.date,time:x.time,place:x.place,notes:x.notes}});
+var ae=document.activeElement;
+if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))return;
+render()})}
+sb.channel("items-changes").on("postgres_changes",{event:"*",schema:"public",table:"items"},load).subscribe();
+load();
+
+function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function go(v){location.hash=v||"";route()}
+function route(){var h=location.hash.replace("#","");cur=VEN[h]?h:null;render()}
+function render(){
+var a=document.getElementById("app");
+if(!cur){
+document.documentElement.style.setProperty("--ac","#14483a");
+a.innerHTML='<h1>Itinerario de boliches</h1><p class="sub">Elige un local para ver su calendario.</p>'+
+Object.keys(VEN).map(function(k){return '<button class="big '+VEN[k].c+'" onclick="go(\''+k+'\')">'+VEN[k].n+'<small>Eventos · Marketing · Fotos · Publicaciones · Reuniones</small></button>'}).join("");
+return}
+var v=VEN[cur];document.documentElement.style.setProperty("--ac",v.ac);
+var s=SEC[tab],has=function(f){return s.f.indexOf(f)>-1};
+var items=list(cur,tab).slice().sort(function(x,y){return (x.date+(x.time||"")).localeCompare(y.date+(y.time||""))});
+a.innerHTML='<div class="top"><h2>'+v.n+'</h2><button onclick="go()">← Inicio</button></div>'+
+'<div class="tabs">'+Object.keys(SEC).map(function(k){return '<button class="'+(k==tab?"on":"")+'" onclick="tab=\''+k+'\';render()">'+SEC[k].t+'</button>'}).join("")+'</div>'+
+'<form onsubmit="return false"><label>Título / actividad<input id="f-title" placeholder="Ej: Campaña de lanzamiento"></label>'+
+'<div class="row"><label>'+s.lab+'<input type="date" id="f-date"></label>'+(has("time")?'<label>Hora<input type="time" id="f-time"></label>':'')+'</div>'+
+(has("place")?'<label>'+(s.pl||"Lugar")+'<input id="f-place"></label>':'')+
+'<label>Notas<textarea id="f-notes" rows="2"></textarea></label>'+
+'<button class="add" onclick="add()">+ Agregar</button></form>'+
+(items.length?items.map(function(it){
+var d=it.date?new Date(it.date+"T00:00:00"):null;
+return '<div class="item"><div class="date">'+(d?'<b>'+d.getDate()+'</b><span>'+MES[d.getMonth()]+' '+d.getFullYear()+'</span>':'<b>–</b>')+'</div><div class="info"><h3>'+esc(it.title)+'</h3><div class="meta">'+
+(it.time?'🕒 '+esc(it.time):'')+(it.place?' · 📍 '+esc(it.place):'')+'</div>'+(it.notes?'<div class="notes">'+esc(it.notes)+'</div>':'')+'</div><button class="del" title="Eliminar" onclick="del(\''+it.id+'\')">×</button></div>'}).join(""):'<div class="empty">Aún no hay nada en esta sección.</div>')+'<p class="meta" style="text-align:center">'+(dbc?"🟢 Guardado en Supabase":"")+'</p>';
+}
+function add(){
+var g=function(i){var e=document.getElementById(i);return e?e.value.trim():""};
+var t=g("f-title"),d=g("f-date");
+if(!t||!d){alert("Escribe un título y elige una fecha.");return}
+var it={id:"i"+Date.now()+Math.random().toString(36).slice(2,6),v:cur,s:tab,title:t,date:d,time:g("f-time"),place:g("f-place"),notes:g("f-notes")};
+sb.from("items").insert({id:it.id,venue:it.v,section:it.s,title:it.title,date:it.date,time:it.time,place:it.place,notes:it.notes}).then(function(r){if(r.error)fail();else load()})}
+function del(id){if(!confirm("¿Eliminar este elemento?"))return;sb.from("items").delete().eq("id",id).then(function(r){if(r.error)fail();else load()})}
+window.addEventListener("hashchange",route);route();
+</script>
+</body>
+</html>
